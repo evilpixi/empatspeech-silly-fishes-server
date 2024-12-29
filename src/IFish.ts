@@ -5,4 +5,6 @@ export default interface Fish
   y: number;
   key: string;
   score: number;
+  targetX?: number;
+  targetY?: number;
 }

@@ -7,6 +7,7 @@ import { FishEvents } from './consts';
 
 let gameScore: number = 0;
 const fishes: Map<string, Fish> = new Map();
+const movementArea = { xmin: 64, xmax: 1856, ymin: 64, ymax: 692 };
 
 const app = express();
 const server = http.createServer(app);
@@ -38,10 +39,21 @@ io.on('connect', (socket: Socket) =>
   socket.on(FishEvents.SPAWN_FISH, (fishData: Fish) =>
   {
     console.log("A new fish has been asked to be spawned:", fishData);
-    const newFish: Fish = { ...fishData, id: socket.id + Date.now() };
+    const newFish: Fish = { ...fishData, id: socket.id + Date.now(), targetX: 0, targetY: 0 };
+
+    const movement = getNewRandomTargetPosition();
+    newFish.targetX = movement.targetX;
+    newFish.targetY = movement.targetY;
     fishes.set(newFish.id, newFish);
 
+
     io.emit(FishEvents.FISH_SPAWNED, newFish);
+    setTimeout(() =>
+    {
+      if (!fishes.has(newFish.id)) return;
+
+      updateNextFishMovement(newFish);
+    }, 5300);
   });
 
   // when a fish is set to delete
@@ -71,6 +83,26 @@ function updateScore(newScore: number)
   io.emit(FishEvents.SCORE_UPDATED, gameScore);
 }
 
+function getNewRandomTargetPosition()
+{
+  return {
+    targetX: Math.floor(Math.random() * (movementArea.xmax - movementArea.xmin + 1) + movementArea.xmin),
+    targetY: Math.floor(Math.random() * (movementArea.ymax - movementArea.ymin + 1) + movementArea.ymin)
+  };
+}
+
+function updateNextFishMovement(fish: Fish)
+{
+  const movement = getNewRandomTargetPosition();
+
+  io.emit(FishEvents.FISH_UPDATED, { id: fish.id, ...movement });
+  setTimeout(() =>
+  {
+    if (!fishes.has(fish.id)) return;
+
+    updateNextFishMovement(fish);
+  }, 5000);
+}
 
 // --------------------------------------------------
 // --------------- Routes and Server ----------------
